@@ -1,6 +1,34 @@
 #pragma once
 #include <ntifs.h>
 
+#pragma pack(push, 1)
+typedef struct _KTSS64
+{
+    ULONG Reserved0;                                                        //0x0
+    ULONGLONG Rsp0;                                                         //0x4
+    ULONGLONG Rsp1;                                                         //0xc
+    ULONGLONG Rsp2;                                                         //0x14
+    ULONGLONG Ist[8];                                                       //0x1c
+    ULONGLONG Reserved1;                                                    //0x5c
+    USHORT Reserved2;                                                       //0x64
+    USHORT IoMapBase;                                                       //0x66
+} KTSS64, * PKTSS64;
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+typedef struct _MACHINE_FRAME
+{
+    ULONGLONG Rip;                                                          //0x0
+    USHORT SegCs;                                                           //0x8
+    USHORT Fill1[3];                                                        //0xa
+    ULONG EFlags;                                                           //0x10
+    ULONG Fill2;                                                            //0x14
+    ULONGLONG Rsp;                                                          //0x18
+    USHORT SegSs;                                                           //0x20
+    USHORT Fill3[3];                                                        //0x22
+} MACHINE_FRAME, * PMACHINE_FRAME;
+#pragma pack(pop)
+
 //0x4b0 bytes (sizeof)
 typedef struct _HAL_PRIVATE_DISPATCH
 {
