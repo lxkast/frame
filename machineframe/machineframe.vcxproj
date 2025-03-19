@@ -94,10 +94,12 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="helpers.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="helpers.hpp" />
     <ClInclude Include="log.hpp" />
     <ClInclude Include="structs.hpp" />
   </ItemGroup>
