@@ -190,4 +190,3 @@ typedef struct _HAL_PRIVATE_DISPATCH
     VOID(*HalIommuReportIommuFault)(ULONGLONG arg1, struct _FAULT_INFORMATION* arg2); //0x4a0
     UCHAR(*HalIommuDmaRemappingCapable)(struct _EXT_IOMMU_DEVICE_ID* arg1, ULONG* arg2); //0x4a8
 } HAL_PRIVATE_DISPATCH, *PHAL_PRIVATE_DISPATCH;
-
