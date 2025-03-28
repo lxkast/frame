@@ -18,7 +18,7 @@ BOOLEAN RestoreFrameCallback(PVOID context, BOOLEAN handled) {
     PKPCR kpcr = KeGetPcr();
     PKTSS64 tss = (PKTSS64)kpcr->TssBase;
     PMACHINE_FRAME machine_frame = (PMACHINE_FRAME)(tss->Ist[3] - sizeof(MACHINE_FRAME));
-    PKPRCB_THREADS kprcb_threads = reinterpret_cast<PKPRCB_THREADS>(kpcr + 0x188);
+    PKPRCB_THREADS kprcb_threads = reinterpret_cast<PKPRCB_THREADS>(reinterpret_cast<PUCHAR>(kpcr) + 0x188);
 
     ULONG processor_index = KeGetCurrentProcessorNumberEx(0);
     machine_frame->Rip = nmi_core_infos[processor_index].prev_rip;
@@ -39,7 +39,7 @@ VOID HalPreprocessNmiHook(ULONG arg1) {
     KeGetCurrentThread();
     HalPreprocessNmiOriginal(arg1);
     LOG_DEBUG("HalPreprocessNmi hook called");
-    
+
     if (arg1 == 1) return;
 
     if (!nmi_list_head) {
@@ -59,7 +59,7 @@ VOID HalPreprocessNmiHook(ULONG arg1) {
     PKPCR kpcr = KeGetPcr();
     PKTSS64 tss = (PKTSS64)kpcr->TssBase;
     PMACHINE_FRAME machine_frame = (PMACHINE_FRAME)(tss->Ist[3] - sizeof(MACHINE_FRAME));
-    PKPRCB_THREADS kprcb_threads = reinterpret_cast<PKPRCB_THREADS>(kpcr + 0x188);
+    PKPRCB_THREADS kprcb_threads = reinterpret_cast<PKPRCB_THREADS>(reinterpret_cast<PUCHAR>(kpcr) + 0x188);
 
     ULONG processor_index = KeGetCurrentProcessorNumberEx(0);
     nmi_core_infos[processor_index].prev_rip = machine_frame->Rip;
@@ -70,12 +70,12 @@ VOID HalPreprocessNmiHook(ULONG arg1) {
 
     /*
         We will spoof as the current core's idle system thread
-        Through investigation with WinDbg: a valid RSP should be around 0x70 under the initial RSP
+        Through investigation with WinDbg: a valid RSP should be around 0x38 under the initial RSP
         which should work well if we pretend RIP was nt!PoIdle
     */
     
     machine_frame->Rip = PoIdle;
-    machine_frame->Rsp = *reinterpret_cast<PULONGLONG>(reinterpret_cast<PUCHAR>(kprcb_threads->IdleThread) + 0x28) - 0x70;
+    machine_frame->Rsp = *reinterpret_cast<PULONGLONG>(reinterpret_cast<PUCHAR>(kprcb_threads->IdleThread) + 0x28) - 0x38;
     kprcb_threads->CurrentThread = kprcb_threads->IdleThread;
     kprcb_threads->NextThread = nullptr;
     *reinterpret_cast<PBOOLEAN>(reinterpret_cast<PUCHAR>(kprcb_threads->IdleThread) + 0x71) = TRUE;
@@ -112,7 +112,7 @@ VOID Unhook() {
 }
 
 VOID Unload(PDRIVER_OBJECT driver_object) {
-    
+
     LOG_DEBUG("Unloading");
     ExFreePoolWithTag(nmi_core_infos, NMI_CORE_INFO_TAG);
     Unhook();
@@ -181,7 +181,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICODE_STRING registry_path
         }
 
         status = InitHook();
-        
+
     } while (false);
 
     if (!NT_SUCCESS(status)) {
