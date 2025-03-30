@@ -190,3 +190,53 @@ typedef struct _HAL_PRIVATE_DISPATCH
     VOID(*HalIommuReportIommuFault)(ULONGLONG arg1, struct _FAULT_INFORMATION* arg2); //0x4a0
     UCHAR(*HalIommuDmaRemappingCapable)(struct _EXT_IOMMU_DEVICE_ID* arg1, ULONG* arg2); //0x4a8
 } HAL_PRIVATE_DISPATCH, *PHAL_PRIVATE_DISPATCH;
+
+//0xaf00 bytes (sizeof)
+// i chopped this down
+typedef struct _KPRCB
+{
+    ULONG MxCsr;                                                            //0x0
+    UCHAR LegacyNumber;                                                     //0x4
+    UCHAR ReservedMustBeZero;                                               //0x5
+    UCHAR InterruptRequest;                                                 //0x6
+    UCHAR IdleHalt;                                                         //0x7
+    struct _KTHREAD* CurrentThread;                                         //0x8
+    struct _KTHREAD* NextThread;                                            //0x10
+    struct _KTHREAD* IdleThread;                                            //0x18
+} KPRCB, *PKPRCB;
+
+
+
+//0x1 bytes (sizeof)
+union _KWAIT_STATUS_REGISTER
+{
+    UCHAR Flags;                                                            //0x0
+    UCHAR State : 3;                                                          //0x0
+    UCHAR Affinity : 1;                                                       //0x0
+    UCHAR Priority : 1;                                                       //0x0
+    UCHAR Apc : 1;                                                            //0x0
+    UCHAR UserApc : 1;                                                        //0x0
+    UCHAR Alert : 1;                                                          //0x0
+};
+
+//0x430 bytes (sizeof)
+// i chopped this down
+struct _KTHREAD
+{
+    struct _DISPATCHER_HEADER Header;                                       //0x0
+    VOID* SListFaultAddress;                                                //0x18
+    ULONGLONG QuantumTarget;                                                //0x20
+    VOID* InitialStack;                                                     //0x28
+    VOID* volatile StackLimit;                                              //0x30
+    VOID* StackBase;                                                        //0x38
+    ULONGLONG ThreadLock;                                                   //0x40
+    volatile ULONGLONG CycleTime;                                           //0x48
+    ULONG CurrentRunTime;                                                   //0x50
+    ULONG ExpectedRunTime;                                                  //0x54
+    VOID* KernelStack;                                                      //0x58
+    struct _XSAVE_FORMAT* StateSaveArea;                                    //0x60
+    struct _KSCHEDULING_GROUP* volatile SchedulingGroup;                    //0x68
+    union _KWAIT_STATUS_REGISTER WaitRegister;                              //0x70
+    volatile UCHAR Running;                                                 //0x71
+    UCHAR Alerted[2];                                                       //0x72
+};

@@ -7,25 +7,18 @@
 BOOLEAN RestoreFrameCallback(PVOID context, BOOLEAN handled) {
     UNREFERENCED_PARAMETER(context);
     LOG_DEBUG("Restore frame callback called");
-    /*
-        steps to find machine frame:
 
-        1. get KPCR, which is stored in the GS register
-        2. get TSS from the KPCR
-        3. get the address of the NMI interrupt stack table from the TSS
-        4. subtract the size of the machine frame structure
-    */
     PKPCR kpcr = KeGetPcr();
+    PKPRCB kprcb = kpcr->CurrentPrcb;
     PKTSS64 tss = (PKTSS64)kpcr->TssBase;
     PMACHINE_FRAME machine_frame = (PMACHINE_FRAME)(tss->Ist[3] - sizeof(MACHINE_FRAME));
-    PKPRCB_THREADS kprcb_threads = reinterpret_cast<PKPRCB_THREADS>(reinterpret_cast<PUCHAR>(kpcr) + 0x188);
 
     ULONG processor_index = KeGetCurrentProcessorNumberEx(0);
     machine_frame->Rip = nmi_core_infos[processor_index].prev_rip;
     machine_frame->Rsp = nmi_core_infos[processor_index].prev_rsp;
-    kprcb_threads->CurrentThread = nmi_core_infos[processor_index].prev_current_thread;
-    kprcb_threads->NextThread = nmi_core_infos[processor_index].prev_next_thread;
-    *reinterpret_cast<PBOOLEAN>(reinterpret_cast<PUCHAR>(kprcb_threads->IdleThread) + 0x71) = nmi_core_infos[processor_index].prev_active;
+    kprcb->CurrentThread = nmi_core_infos[processor_index].prev_current_thread;
+    kprcb->NextThread = nmi_core_infos[processor_index].prev_next_thread;
+    kprcb->IdleThread->Running = nmi_core_infos[processor_index].prev_running;
 
     LOG_DEBUG("Swapped back thread");
     if (callback_parent) {
@@ -57,16 +50,16 @@ VOID HalPreprocessNmiHook(ULONG arg1) {
     callback_parent->Next = &restore_callback;
 
     PKPCR kpcr = KeGetPcr();
+    PKPRCB kprcb = kpcr->CurrentPrcb;
     PKTSS64 tss = (PKTSS64)kpcr->TssBase;
     PMACHINE_FRAME machine_frame = (PMACHINE_FRAME)(tss->Ist[3] - sizeof(MACHINE_FRAME));
-    PKPRCB_THREADS kprcb_threads = reinterpret_cast<PKPRCB_THREADS>(reinterpret_cast<PUCHAR>(kpcr) + 0x188);
 
     ULONG processor_index = KeGetCurrentProcessorNumberEx(0);
     nmi_core_infos[processor_index].prev_rip = machine_frame->Rip;
     nmi_core_infos[processor_index].prev_rsp = machine_frame->Rsp;
-    nmi_core_infos[processor_index].prev_current_thread = kprcb_threads->CurrentThread;
-    nmi_core_infos[processor_index].prev_next_thread = kprcb_threads->NextThread;
-    nmi_core_infos[processor_index].prev_active = *reinterpret_cast<PBOOLEAN>(reinterpret_cast<PUCHAR>(kprcb_threads->IdleThread) + 0x71);
+    nmi_core_infos[processor_index].prev_current_thread = kprcb->CurrentThread;
+    nmi_core_infos[processor_index].prev_next_thread = kprcb->NextThread;
+    nmi_core_infos[processor_index].prev_running = kprcb->IdleThread->Running;
 
     /*
         We will spoof as the current core's idle system thread
@@ -75,10 +68,10 @@ VOID HalPreprocessNmiHook(ULONG arg1) {
     */
     
     machine_frame->Rip = PoIdle;
-    machine_frame->Rsp = *reinterpret_cast<PULONGLONG>(reinterpret_cast<PUCHAR>(kprcb_threads->IdleThread) + 0x28) - 0x38;
-    kprcb_threads->CurrentThread = kprcb_threads->IdleThread;
-    kprcb_threads->NextThread = nullptr;
-    *reinterpret_cast<PBOOLEAN>(reinterpret_cast<PUCHAR>(kprcb_threads->IdleThread) + 0x71) = TRUE;
+    machine_frame->Rsp = (ULONGLONG)((PUCHAR)kprcb->IdleThread->InitialStack - 0x38);
+    kprcb->CurrentThread = kprcb->IdleThread;
+    kprcb->NextThread = nullptr;
+    kprcb->IdleThread->Running = true;
 }
 
 NTSTATUS InitHook() {
@@ -143,8 +136,7 @@ PKNMI_HANDLER_CALLBACK SigscanKiNmiCallbackListHead() {
 NTSTATUS SigscanPoIdle() {
     uintptr_t ntos_base_address = helpers::get_ntos_base_address();
 
-    // sig found in KiProcessNmi
-    // 48 8B 3D ? ? ? ? 41 8A F4
+    // 40 55 53 41 56
     char NmiSignature[] = "\x40\x55\x53\x41\x56";
     char NmiSignatureMask[] = "xxxxx";
     PoIdle = helpers::find_pattern(ntos_base_address,

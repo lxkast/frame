@@ -9,14 +9,8 @@ typedef struct _NMI_CORE_INFO {
     ULONG64 prev_rsp;
     PKTHREAD prev_current_thread;
     PKTHREAD prev_next_thread;
-    BOOLEAN prev_active;
+    BOOLEAN prev_running;
 } NMI_CORE_INFO, * PNMI_CORE_INFO;
-
-typedef struct _KPRCB_THREADS {
-    PKTHREAD CurrentThread;
-    PKTHREAD NextThread;
-    PKTHREAD IdleThread;
-} KPRCB_THREADS, *PKPRCB_THREADS;
 
 PNMI_CORE_INFO nmi_core_infos;
 PKNMI_HANDLER_CALLBACK nmi_list_head = nullptr;
